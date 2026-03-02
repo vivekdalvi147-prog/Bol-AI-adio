@@ -1,12 +1,15 @@
 import os
 import json
 import base64
-import google.generativeai as genai
+import io
+import wave
 from http.server import BaseHTTPRequestHandler
+from google import genai
+from google.genai import types
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        # CORS allow karne ke liye headers
+        # CORS set karna
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -24,40 +27,60 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": "Audio data nahi mila"}).encode())
                 return
 
-            # Vercel Environment Variable se API key lena
+            # Vercel Environment Variable
             api_key = os.environ.get("Google_api_vivek")
             if not api_key:
-                self.wfile.write(json.dumps({"error": "API Key (Google_api_vivek) Vercel me set nahi hai"}).encode())
+                self.wfile.write(json.dumps({"error": "API Key (Google_api_vivek) nahi mili"}).encode())
                 return
 
-            # Gemini API configure karna
-            genai.configure(api_key=api_key)
-            
-            # Model initialize karna (gemini-2.5-flash ya gemini-2.0-flash)
-            model = genai.GenerativeModel("gemini-2.5-flash")
-
-            # Base64 string ko bytes me convert karna
+            # Naya GenAI client initialize karna
+            client = genai.Client(api_key=api_key)
             audio_bytes = base64.b64decode(audio_b64)
 
-            # Gemini ke liye audio part create karna
-            audio_part = {
-                "mime_type": "audio/webm",
-                "data": audio_bytes
-            }
+            # --- TRUE NATIVE AUDIO REQUEST ---
+            # Hum model ko bata rahe hain ki sirf AUDIO (Voice) me reply kare
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[
+                    "Listen to the user's audio and respond completely in a helpful voice.",
+                    types.Part.from_bytes(data=audio_bytes, mime_type="audio/webm")
+                ],
+                config=types.GenerateContentConfig(
+                    response_modalities=["AUDIO"]  # Yahan Native Audio set kiya hai
+                )
+            )
 
-            # AI ko prompt + audio bhejna
-            response = model.generate_content([
-                "You are a helpful and friendly AI assistant. Listen to the user's audio and give a short, direct, and helpful response.",
-                audio_part
-            ])
+            audio_output_base64 = None
+            
+            # Model ke response se NATIVE VOICE extract karna
+            if response.candidates and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if part.inline_data:
+                        # Gemini Raw 24kHz PCM audio deta hai
+                        raw_pcm_bytes = part.inline_data.data
+                        
+                        # Use browser ke liye Playable WAV format me pack karna
+                        wav_io = io.BytesIO()
+                        with wave.open(wav_io, 'wb') as wf:
+                            wf.setnchannels(1)       # Mono
+                            wf.setsampwidth(2)       # 16-bit
+                            wf.setframerate(24000)   # Gemini ki standard sample rate 24kHz
+                            wf.writeframes(raw_pcm_bytes)
+                            
+                        wav_bytes = wav_io.getvalue()
+                        # Base64 me wapas UI ko bhejna
+                        audio_output_base64 = base64.b64encode(wav_bytes).decode('utf-8')
+                        break
 
-            # Reply wapas frontend ko bhejna
-            self.wfile.write(json.dumps({"reply": response.text}).encode())
+            if audio_output_base64:
+                self.wfile.write(json.dumps({"audio": audio_output_base64}).encode())
+            else:
+                self.wfile.write(json.dumps({"error": "Model ne Audio return nahi kiya. Dubara try karein."}).encode())
 
         except Exception as e:
-            self.wfile.write(json.dumps({"error": str(e)}).encode())
+            self.wfile.write(json.dumps({"error": f"Backend Error: {str(e)}"}).encode())
             
-    # OPTIONS method for CORS preflight
+    # Preflight Request ke liye
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
