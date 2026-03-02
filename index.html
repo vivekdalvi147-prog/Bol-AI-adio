@@ -3,139 +3,253 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini Native Audio Dialog</title>
+    <title>Gemini 2.5 Live Audio</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .box { background: #1e1e1e; padding: 30px; border-radius: 20px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.5); width: 90%; max-width: 400px; }
-        .btn { background: #6200ea; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 50px; cursor: pointer; transition: 0.3s; width: 100%; margin-top: 20px; font-weight: bold;}
-        .btn:hover { background: #7c4dff; }
-        .btn.recording { background: #d50000; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100% {transform: scale(1);} }
-        #status { margin-top: 20px; font-size: 16px; color: #00e676; min-height: 24px; font-weight: bold;}
+        :root {
+            --primary-glow: #00ffff;
+            --recording-glow: #ff0055;
+            --thinking-glow: #ffcc00;
+            --bg-color: #050505;
+        }
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+        }
+
+        /* ORB ANIMATION CONTAINER */
+        .orb-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
         
-        /* Audio Animation Visualizer */
-        .visualizer { width: 100%; height: 40px; background: #2c2c2c; margin-top: 20px; border-radius: 10px; display: none; overflow: hidden; position: relative;}
-        .visualizer.active { display: flex; }
-        .wave { width: 100%; height: 100%; background: linear-gradient(90deg, transparent, #00e676, transparent); animation: waveAnim 1.5s linear infinite; }
-        @keyframes waveAnim { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+        .orb-container:active {
+            transform: scale(0.95);
+        }
+
+        /* MAIN GLOWING CIRCLE */
+        .orb {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), rgba(0,255,255,0.4), rgba(0,0,0,0.9));
+            box-shadow: 0 0 30px var(--primary-glow), inset 0 0 20px var(--primary-glow);
+            position: relative;
+            z-index: 2;
+            transition: all 0.5s ease;
+        }
+
+        /* PULSING RINGS */
+        .ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid var(--primary-glow);
+            opacity: 0;
+            z-index: 1;
+            transform: scale(0.8);
+        }
+
+        /* STATE: IDLE ANIMATION */
+        .state-idle .orb {
+            animation: breathe 3s infinite ease-in-out;
+        }
+        @keyframes breathe {
+            0%, 100% { box-shadow: 0 0 30px var(--primary-glow); }
+            50% { box-shadow: 0 0 60px var(--primary-glow); }
+        }
+
+        /* STATE: RECORDING */
+        .state-recording .orb {
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), rgba(255,0,85,0.5), rgba(0,0,0,0.9));
+            box-shadow: 0 0 50px var(--recording-glow);
+        }
+        .state-recording .ring {
+            border-color: var(--recording-glow);
+            animation: ripple 1.5s infinite linear;
+        }
+
+        /* STATE: THINKING */
+        .state-thinking .orb {
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), rgba(255,204,0,0.5), rgba(0,0,0,0.9));
+            box-shadow: 0 0 40px var(--thinking-glow);
+            animation: spin 1s infinite linear;
+        }
+
+        /* STATE: SPEAKING */
+        .state-speaking .orb {
+            box-shadow: 0 0 80px var(--primary-glow);
+            animation: speakPulse 0.5s infinite alternate;
+        }
+
+        @keyframes ripple {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        @keyframes speakPulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+
+        /* TEXT STATUS */
+        .status-text {
+            margin-top: 50px;
+            font-size: 18px;
+            letter-spacing: 1px;
+            color: #888;
+            font-weight: 300;
+            text-transform: uppercase;
+        }
+        
+        .hint {
+            position: absolute;
+            bottom: 30px;
+            font-size: 12px;
+            color: #444;
+        }
+
     </style>
 </head>
-<body>
+<body class="state-idle">
 
-<div class="box">
-    <h2>🎙️ True Native AI Voice</h2>
-    <p>Hold the button to speak. AI will reply directly in Voice!</p>
-    
-    <button id="recordBtn" class="btn">Hold to Speak</button>
-    
-    <div class="visualizer" id="visualizer">
-        <div class="wave"></div>
+    <div class="orb-container" id="interactionBtn">
+        <div class="orb"></div>
+        <div class="ring" style="animation-delay: 0s"></div>
+        <div class="ring" style="animation-delay: 0.5s"></div>
+        <div class="ring" style="animation-delay: 1s"></div>
     </div>
-    
-    <div id="status">Mike Ready 🎤</div>
-</div>
 
-<script>
-    let mediaRecorder;
-    let audioChunks =[];
-    const recordBtn = document.getElementById('recordBtn');
-    const statusText = document.getElementById('status');
-    const visualizer = document.getElementById('visualizer');
+    <div class="status-text" id="status">Tap & Hold to Speak</div>
+    <div class="hint">Powered by Gemini 2.5 Native Audio</div>
 
-    // Microphone Permission and Setup
-    async function initMic() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-            
-            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-            
-            mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                audioChunks =[];
-                sendAudio(audioBlob);
-            };
-        } catch (err) {
-            statusText.innerText = "Error: Mike Permission Required! ❌";
-            statusText.style.color = "#ff5252";
-            console.error(err);
-        }
-    }
+    <script>
+        const btn = document.getElementById('interactionBtn');
+        const body = document.body;
+        const statusEl = document.getElementById('status');
+        
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
 
-    // Audio server ko bhejna aur Native Voice receive karna
-    async function sendAudio(blob) {
-        statusText.innerText = "Sending to Gemini API... 🚀";
-        statusText.style.color = "#ffea00";
-        visualizer.classList.add("active"); // Show animation
-
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = async () => {
-            const base64Audio = reader.result.split(',')[1];
-
+        // 1. MIC SETUP
+        async function setupMic() {
             try {
-                const res = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ audio: base64Audio })
-                });
-
-                const data = await res.json();
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
                 
-                if (data.audio) {
-                    statusText.innerText = "AI is Speaking... 🔊";
-                    statusText.style.color = "#00e676";
-                    
-                    // Direct Browser me Gemini ki Native Audio play karna
-                    const aiVoiceOut = new Audio("data:audio/wav;base64," + data.audio);
-                    await aiVoiceOut.play();
-                    
-                    // Jab AI bolna khatam kare
-                    aiVoiceOut.onended = () => {
-                        statusText.innerText = "Done! Ready for next. ✅";
-                        visualizer.classList.remove("active");
-                    };
-                } else if (data.error) {
-                    throw new Error(data.error);
-                }
+                mediaRecorder.ondataavailable = event => {
+                    if (event.data.size > 0) audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    audioChunks = [];
+                    uploadAudio(audioBlob);
+                };
+                
+                statusEl.innerText = "Tap & Hold to Speak";
             } catch (err) {
-                statusText.innerText = "API Call Error: " + err.message;
-                statusText.style.color = "#ff5252";
-                visualizer.classList.remove("active");
+                statusEl.innerText = "Please Allow Mic Access";
+                statusEl.style.color = "red";
+                console.error("Mic Error:", err);
+            }
+        }
+
+        // 2. SEND TO API
+        async function uploadAudio(blob) {
+            setVisualState('thinking');
+            statusEl.innerText = "Gemini is thinking...";
+
+            const reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = async () => {
+                const base64Audio = reader.result.split(',')[1];
+
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ audio: base64Audio })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.audio) {
+                        playAudioResponse(data.audio);
+                    } else if (data.error) {
+                        alert("API Error: " + data.error);
+                        setVisualState('idle');
+                        statusEl.innerText = "Error. Try Again.";
+                    }
+                } catch (e) {
+                    console.error(e);
+                    setVisualState('idle');
+                    statusEl.innerText = "Connection Error";
+                }
+            };
+        }
+
+        // 3. PLAY AUDIO
+        function playAudioResponse(base64Audio) {
+            setVisualState('speaking');
+            statusEl.innerText = "Gemini Speaking...";
+            
+            const audio = new Audio("data:audio/wav;base64," + base64Audio);
+            audio.play();
+
+            audio.onended = () => {
+                setVisualState('idle');
+                statusEl.innerText = "Tap & Hold to Speak";
+            };
+        }
+
+        // 4. UI STATE MANAGER
+        function setVisualState(state) {
+            body.className = ''; // Reset
+            body.classList.add('state-' + state);
+        }
+
+        // 5. EVENT LISTENERS (Mouse & Touch)
+        const start = (e) => {
+            e.preventDefault();
+            if (!mediaRecorder || mediaRecorder.state === 'recording') return;
+            mediaRecorder.start();
+            setVisualState('recording');
+            statusEl.innerText = "Listening...";
+        };
+
+        const stop = (e) => {
+            e.preventDefault();
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                // Visual state will change to 'thinking' inside uploadAudio
             }
         };
-    }
 
-    // Push to Talk Events
-    function startRecord() {
-        if (mediaRecorder && mediaRecorder.state === "inactive") {
-            mediaRecorder.start();
-            recordBtn.innerText = "Listening... (Release to Stop)";
-            recordBtn.classList.add("recording");
-            statusText.innerText = "Recording... 🎤";
-            visualizer.classList.remove("active"); 
-        }
-    }
+        btn.addEventListener('mousedown', start);
+        btn.addEventListener('mouseup', stop);
+        btn.addEventListener('mouseleave', stop); // Agar mouse bahar chala jaye
 
-    function stopRecord() {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.stop();
-            recordBtn.innerText = "Hold to Speak";
-            recordBtn.classList.remove("recording");
-        }
-    }
+        btn.addEventListener('touchstart', start);
+        btn.addEventListener('touchend', stop);
 
-    // Desktop Events
-    recordBtn.addEventListener('mousedown', startRecord);
-    recordBtn.addEventListener('mouseup', stopRecord);
-    
-    // Mobile Touch Events
-    recordBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecord(); });
-    recordBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRecord(); });
+        // Initialize
+        setupMic();
 
-    // Page start hote hi mic setup karo
-    initMic();
-</script>
-
+    </script>
 </body>
 </html>
