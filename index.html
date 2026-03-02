@@ -3,235 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Text to Speech Converter</title>
+    <title>Real Human Voice TTS</title>
     <style>
-        /* CSS: Website ko sundar dikhane ke liye */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            height: 100vh;
+            background-color: #f0f2f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
+            height: 100vh;
+            margin: 0;
         }
 
-        .container {
+        .card {
             background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             width: 90%;
             max-width: 500px;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             text-align: center;
         }
 
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 24px;
+        h2 {
+            color: #2d3748;
+            margin-bottom: 1.5rem;
         }
 
         textarea {
             width: 100%;
-            height: 150px;
-            padding: 15px;
-            border: 2px solid #ddd;
-            border-radius: 10px;
+            height: 120px;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 1rem;
             resize: none;
-            font-size: 16px;
             outline: none;
-            transition: border 0.3s;
         }
 
         textarea:focus {
-            border-color: #764ba2;
-        }
-
-        .controls {
-            margin-top: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+            border-color: #4299e1;
         }
 
         select {
             width: 100%;
             padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        .settings {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-        }
-
-        .setting-box {
-            width: 48%;
-            text-align: left;
-        }
-        
-        .setting-box label {
-            font-size: 12px;
-            color: #666;
-        }
-
-        input[type="range"] {
-            width: 100%;
-            cursor: pointer;
+            border-radius: 8px;
+            border: 1px solid #cbd5e0;
+            margin-bottom: 1rem;
+            background: #fff;
+            font-size: 0.95rem;
         }
 
         button {
-            background: #764ba2;
+            background-color: #48bb78;
             color: white;
             border: none;
-            padding: 12px 20px;
-            border-radius: 30px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background 0.3s;
-            margin-top: 10px;
-            width: 100%;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
             font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
         }
 
         button:hover {
-            background: #5b3a7d;
-        }
-        
-        button:active {
-            transform: scale(0.98);
+            background-color: #38a169;
         }
 
-        .status {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #888;
+        .hint {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #e53e3e;
+            background: #fff5f5;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #feb2b2;
+        }
+
+        .highlight-voice {
+            background-color: #e6fffa;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Text to Audio Converter</h1>
+    <div class="card">
+        <h2>🗣️ Natural Text to Speech</h2>
         
-        <textarea id="text-input" placeholder="Yahan apna text likhein jo aap audio mein sunna chahte hain..."></textarea>
+        <textarea id="text" placeholder="Yaha Marathi/Hindi text likhein... (e.g., Mala asa pahije...)"></textarea>
 
-        <div class="controls">
-            <!-- Voice Selection -->
-            <select id="voice-select">
-                <option value="" disabled selected>Voice Select Karein...</option>
-            </select>
+        <select id="voices">
+            <option value="">Voice Load ho rahi hai...</option>
+        </select>
 
-            <!-- Speed & Pitch Controls -->
-            <div class="settings">
-                <div class="setting-box">
-                    <label>Speed (Rate)</label>
-                    <input type="range" id="rate" min="0.5" max="2" value="1" step="0.1">
-                </div>
-                <div class="setting-box">
-                    <label>Aawaz ka Bhari-pan (Pitch)</label>
-                    <input type="range" id="pitch" min="0" max="2" value="1" step="0.1">
-                </div>
-            </div>
+        <button id="speak">🔊 Bolna Shuru Karein</button>
 
-            <button id="speak-btn">🔊 Play Audio</button>
+        <div class="hint">
+            <strong>Important:</strong> Best Quality aur "Real Human Voice" ke liye is website ko <u>Microsoft Edge</u> browser mein chalayein aur <b>"Natural"</b> wali voice select karein.
         </div>
-        <p class="status" id="status-msg"></p>
     </div>
 
     <script>
-        // JavaScript: Logic jo text ko audio banata hai
         const synth = window.speechSynthesis;
-        const textInput = document.getElementById('text-input');
-        const voiceSelect = document.getElementById('voice-select');
-        const rateInput = document.getElementById('rate');
-        const pitchInput = document.getElementById('pitch');
-        const speakBtn = document.getElementById('speak-btn');
-        const statusMsg = document.getElementById('status-msg');
+        const textInput = document.getElementById('text');
+        const voiceSelect = document.getElementById('voices');
+        const speakBtn = document.getElementById('speak');
 
         let voices = [];
 
-        // Sare available voices load karna
-        function populateVoices() {
+        function loadVoices() {
             voices = synth.getVoices();
             voiceSelect.innerHTML = '';
 
-            // Sirf wahi voices dikhaye jo available hain
-            voices.forEach((voice) => {
+            // Pehle "Natural" voices ko dhund kar upar dikhayenge
+            // Microsoft Edge me "Natural" voices hoti hain jo robot nahi lagti
+            const naturalVoices = voices.filter(voice => voice.name.includes("Natural"));
+            const otherVoices = voices.filter(voice => !voice.name.includes("Natural"));
+
+            // Natural voices add karna
+            naturalVoices.forEach(voice => {
                 const option = document.createElement('option');
-                option.textContent = `${voice.name} (${voice.lang})`;
-                option.setAttribute('data-lang', voice.lang);
-                option.setAttribute('data-name', voice.name);
+                option.textContent = `🌟 ${voice.name} (Natural)`;
+                option.value = voice.name;
+                option.style.fontWeight = "bold";
+                option.style.color = "#2b6cb0";
                 voiceSelect.appendChild(option);
             });
+
+            // Baaki voices add karna
+            otherVoices.forEach(voice => {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.value = voice.name;
+                voiceSelect.appendChild(option);
+            });
+
+            // Agar koi voice nahi mili
+            if(voices.length === 0){
+                const option = document.createElement('option');
+                option.textContent = "No voices found (Try opening in Edge)";
+                voiceSelect.appendChild(option);
+            }
         }
 
-        // Browser voices load hone me thoda time leta hai
-        populateVoices();
+        // Voices load hone ka wait karein
+        loadVoices();
         if (speechSynthesis.onvoiceschanged !== undefined) {
-            speechSynthesis.onvoiceschanged = populateVoices;
+            speechSynthesis.onvoiceschanged = loadVoices;
         }
 
-        // Bolne wala function
-        const speak = () => {
+        speakBtn.addEventListener('click', () => {
             if (synth.speaking) {
                 console.error('Already speaking...');
                 return;
             }
 
             if (textInput.value !== '') {
-                // Animation start
-                speakBtn.innerText = "Speaking...";
-                statusMsg.innerText = "Audio generate ho raha hai...";
-
                 const speakText = new SpeechSynthesisUtterance(textInput.value);
                 
-                // Selected Voice set karna
-                const selectedOption = voiceSelect.selectedOptions[0].getAttribute('data-name');
-                for (let i = 0; i < voices.length; i++) {
-                    if (voices[i].name === selectedOption) {
-                        speakText.voice = voices[i];
-                    }
+                const selectedVoiceName = voiceSelect.value;
+                const selectedVoice = voices.find(voice => voice.name === selectedVoiceName);
+
+                if (selectedVoice) {
+                    speakText.voice = selectedVoice;
                 }
 
-                // Speed aur Pitch set karna
-                speakText.rate = rateInput.value;
-                speakText.pitch = pitchInput.value;
+                // Rate aur Pitch ko normal rakhenge taaki insaan jaisa lage
+                speakText.rate = 1; 
+                speakText.pitch = 1;
 
-                // Jab bolna khatam ho jaye
-                speakText.onend = e => {
-                    speakBtn.innerText = "🔊 Play Audio";
-                    statusMsg.innerText = "Complete!";
-                };
-
-                // Agar koi error aaye
-                speakText.onerror = e => {
-                    console.error('Something went wrong');
-                    speakBtn.innerText = "🔊 Play Audio";
+                speakBtn.innerText = "Bol raha hai...";
+                
+                speakText.onend = () => {
+                    speakBtn.innerText = "🔊 Bolna Shuru Karein";
                 };
 
                 synth.speak(speakText);
-            } else {
-                alert('Pahle kuch text likhein!');
             }
-        };
-
-        // Button click par function chalana
-        speakBtn.addEventListener('click', e => {
-            e.preventDefault();
-            speak();
         });
     </script>
-
 </body>
 </html>
