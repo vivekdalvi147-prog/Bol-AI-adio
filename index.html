@@ -3,253 +3,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini 2.5 Live Audio</title>
+    <title>Text to Speech Converter</title>
     <style>
-        :root {
-            --primary-glow: #00ffff;
-            --recording-glow: #ff0055;
-            --thinking-glow: #ffcc00;
-            --bg-color: #050505;
-        }
-        body {
+        /* CSS: Website ko sundar dikhane ke liye */
+        * {
             margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             height: 100vh;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background-color: var(--bg-color);
-            color: white;
-            font-family: 'Segoe UI', sans-serif;
-            overflow: hidden;
-        }
-
-        /* ORB ANIMATION CONTAINER */
-        .orb-container {
-            position: relative;
-            width: 200px;
-            height: 200px;
-            display: flex;
             justify-content: center;
             align-items: center;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        
-        .orb-container:active {
-            transform: scale(0.95);
         }
 
-        /* MAIN GLOWING CIRCLE */
-        .orb {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), rgba(0,255,255,0.4), rgba(0,0,0,0.9));
-            box-shadow: 0 0 30px var(--primary-glow), inset 0 0 20px var(--primary-glow);
-            position: relative;
-            z-index: 2;
-            transition: all 0.5s ease;
+        .container {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            text-align: center;
         }
 
-        /* PULSING RINGS */
-        .ring {
-            position: absolute;
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        textarea {
             width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            border: 2px solid var(--primary-glow);
-            opacity: 0;
-            z-index: 1;
-            transform: scale(0.8);
+            height: 150px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            resize: none;
+            font-size: 16px;
+            outline: none;
+            transition: border 0.3s;
         }
 
-        /* STATE: IDLE ANIMATION */
-        .state-idle .orb {
-            animation: breathe 3s infinite ease-in-out;
-        }
-        @keyframes breathe {
-            0%, 100% { box-shadow: 0 0 30px var(--primary-glow); }
-            50% { box-shadow: 0 0 60px var(--primary-glow); }
+        textarea:focus {
+            border-color: #764ba2;
         }
 
-        /* STATE: RECORDING */
-        .state-recording .orb {
-            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), rgba(255,0,85,0.5), rgba(0,0,0,0.9));
-            box-shadow: 0 0 50px var(--recording-glow);
-        }
-        .state-recording .ring {
-            border-color: var(--recording-glow);
-            animation: ripple 1.5s infinite linear;
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
-        /* STATE: THINKING */
-        .state-thinking .orb {
-            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), rgba(255,204,0,0.5), rgba(0,0,0,0.9));
-            box-shadow: 0 0 40px var(--thinking-glow);
-            animation: spin 1s infinite linear;
+        select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            cursor: pointer;
         }
 
-        /* STATE: SPEAKING */
-        .state-speaking .orb {
-            box-shadow: 0 0 80px var(--primary-glow);
-            animation: speakPulse 0.5s infinite alternate;
+        .settings {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
         }
 
-        @keyframes ripple {
-            0% { transform: scale(0.8); opacity: 1; }
-            100% { transform: scale(2); opacity: 0; }
-        }
-        @keyframes speakPulse {
-            0% { transform: scale(1); }
-            100% { transform: scale(1.1); }
-        }
-
-        /* TEXT STATUS */
-        .status-text {
-            margin-top: 50px;
-            font-size: 18px;
-            letter-spacing: 1px;
-            color: #888;
-            font-weight: 300;
-            text-transform: uppercase;
+        .setting-box {
+            width: 48%;
+            text-align: left;
         }
         
-        .hint {
-            position: absolute;
-            bottom: 30px;
+        .setting-box label {
             font-size: 12px;
-            color: #444;
+            color: #666;
         }
 
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        button {
+            background: #764ba2;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 10px;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #5b3a7d;
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .status {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #888;
+        }
     </style>
 </head>
-<body class="state-idle">
+<body>
 
-    <div class="orb-container" id="interactionBtn">
-        <div class="orb"></div>
-        <div class="ring" style="animation-delay: 0s"></div>
-        <div class="ring" style="animation-delay: 0.5s"></div>
-        <div class="ring" style="animation-delay: 1s"></div>
+    <div class="container">
+        <h1>Text to Audio Converter</h1>
+        
+        <textarea id="text-input" placeholder="Yahan apna text likhein jo aap audio mein sunna chahte hain..."></textarea>
+
+        <div class="controls">
+            <!-- Voice Selection -->
+            <select id="voice-select">
+                <option value="" disabled selected>Voice Select Karein...</option>
+            </select>
+
+            <!-- Speed & Pitch Controls -->
+            <div class="settings">
+                <div class="setting-box">
+                    <label>Speed (Rate)</label>
+                    <input type="range" id="rate" min="0.5" max="2" value="1" step="0.1">
+                </div>
+                <div class="setting-box">
+                    <label>Aawaz ka Bhari-pan (Pitch)</label>
+                    <input type="range" id="pitch" min="0" max="2" value="1" step="0.1">
+                </div>
+            </div>
+
+            <button id="speak-btn">🔊 Play Audio</button>
+        </div>
+        <p class="status" id="status-msg"></p>
     </div>
 
-    <div class="status-text" id="status">Tap & Hold to Speak</div>
-    <div class="hint">Powered by Gemini 2.5 Native Audio</div>
-
     <script>
-        const btn = document.getElementById('interactionBtn');
-        const body = document.body;
-        const statusEl = document.getElementById('status');
-        
-        let mediaRecorder;
-        let audioChunks = [];
-        let isRecording = false;
+        // JavaScript: Logic jo text ko audio banata hai
+        const synth = window.speechSynthesis;
+        const textInput = document.getElementById('text-input');
+        const voiceSelect = document.getElementById('voice-select');
+        const rateInput = document.getElementById('rate');
+        const pitchInput = document.getElementById('pitch');
+        const speakBtn = document.getElementById('speak-btn');
+        const statusMsg = document.getElementById('status-msg');
 
-        // 1. MIC SETUP
-        async function setupMic() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-                
-                mediaRecorder.ondataavailable = event => {
-                    if (event.data.size > 0) audioChunks.push(event.data);
-                };
+        let voices = [];
 
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    audioChunks = [];
-                    uploadAudio(audioBlob);
-                };
-                
-                statusEl.innerText = "Tap & Hold to Speak";
-            } catch (err) {
-                statusEl.innerText = "Please Allow Mic Access";
-                statusEl.style.color = "red";
-                console.error("Mic Error:", err);
-            }
+        // Sare available voices load karna
+        function populateVoices() {
+            voices = synth.getVoices();
+            voiceSelect.innerHTML = '';
+
+            // Sirf wahi voices dikhaye jo available hain
+            voices.forEach((voice) => {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.setAttribute('data-lang', voice.lang);
+                option.setAttribute('data-name', voice.name);
+                voiceSelect.appendChild(option);
+            });
         }
 
-        // 2. SEND TO API
-        async function uploadAudio(blob) {
-            setVisualState('thinking');
-            statusEl.innerText = "Gemini is thinking...";
+        // Browser voices load hone me thoda time leta hai
+        populateVoices();
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoices;
+        }
 
-            const reader = new FileReader();
-            reader.readAsDataURL(blob);
-            reader.onloadend = async () => {
-                const base64Audio = reader.result.split(',')[1];
+        // Bolne wala function
+        const speak = () => {
+            if (synth.speaking) {
+                console.error('Already speaking...');
+                return;
+            }
 
-                try {
-                    const response = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ audio: base64Audio })
-                    });
+            if (textInput.value !== '') {
+                // Animation start
+                speakBtn.innerText = "Speaking...";
+                statusMsg.innerText = "Audio generate ho raha hai...";
 
-                    const data = await response.json();
-
-                    if (data.audio) {
-                        playAudioResponse(data.audio);
-                    } else if (data.error) {
-                        alert("API Error: " + data.error);
-                        setVisualState('idle');
-                        statusEl.innerText = "Error. Try Again.";
+                const speakText = new SpeechSynthesisUtterance(textInput.value);
+                
+                // Selected Voice set karna
+                const selectedOption = voiceSelect.selectedOptions[0].getAttribute('data-name');
+                for (let i = 0; i < voices.length; i++) {
+                    if (voices[i].name === selectedOption) {
+                        speakText.voice = voices[i];
                     }
-                } catch (e) {
-                    console.error(e);
-                    setVisualState('idle');
-                    statusEl.innerText = "Connection Error";
                 }
-            };
-        }
 
-        // 3. PLAY AUDIO
-        function playAudioResponse(base64Audio) {
-            setVisualState('speaking');
-            statusEl.innerText = "Gemini Speaking...";
-            
-            const audio = new Audio("data:audio/wav;base64," + base64Audio);
-            audio.play();
+                // Speed aur Pitch set karna
+                speakText.rate = rateInput.value;
+                speakText.pitch = pitchInput.value;
 
-            audio.onended = () => {
-                setVisualState('idle');
-                statusEl.innerText = "Tap & Hold to Speak";
-            };
-        }
+                // Jab bolna khatam ho jaye
+                speakText.onend = e => {
+                    speakBtn.innerText = "🔊 Play Audio";
+                    statusMsg.innerText = "Complete!";
+                };
 
-        // 4. UI STATE MANAGER
-        function setVisualState(state) {
-            body.className = ''; // Reset
-            body.classList.add('state-' + state);
-        }
+                // Agar koi error aaye
+                speakText.onerror = e => {
+                    console.error('Something went wrong');
+                    speakBtn.innerText = "🔊 Play Audio";
+                };
 
-        // 5. EVENT LISTENERS (Mouse & Touch)
-        const start = (e) => {
-            e.preventDefault();
-            if (!mediaRecorder || mediaRecorder.state === 'recording') return;
-            mediaRecorder.start();
-            setVisualState('recording');
-            statusEl.innerText = "Listening...";
-        };
-
-        const stop = (e) => {
-            e.preventDefault();
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
-                mediaRecorder.stop();
-                // Visual state will change to 'thinking' inside uploadAudio
+                synth.speak(speakText);
+            } else {
+                alert('Pahle kuch text likhein!');
             }
         };
 
-        btn.addEventListener('mousedown', start);
-        btn.addEventListener('mouseup', stop);
-        btn.addEventListener('mouseleave', stop); // Agar mouse bahar chala jaye
-
-        btn.addEventListener('touchstart', start);
-        btn.addEventListener('touchend', stop);
-
-        // Initialize
-        setupMic();
-
+        // Button click par function chalana
+        speakBtn.addEventListener('click', e => {
+            e.preventDefault();
+            speak();
+        });
     </script>
+
 </body>
 </html>
