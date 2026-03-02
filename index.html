@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Native Audio Dialog</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .chat-container {
+            width: 90%;
+            max-width: 500px;
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+        #status {
+            margin: 15px 0;
+            font-weight: bold;
+            color: #00e676;
+        }
+        .btn {
+            background-color: #6200ea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin: 10px;
+        }
+        .btn:hover { background-color: #7c4dff; }
+        .btn.recording {
+            background-color: #d50000;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        #responseBox {
+            margin-top: 20px;
+            padding: 15px;
+            background: #2c2c2c;
+            border-radius: 10px;
+            min-height: 80px;
+            text-align: left;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <h2>🎙️ Voice AI Assistant</h2>
+    <p>Hold the button to speak with AI.</p>
+    
+    <button id="recordBtn" class="btn">Start Recording</button>
+    <div id="status">Ready</div>
+    
+    <div id="responseBox">AI's reply will appear here...</div>
+</div>
+
+<script>
+    let mediaRecorder;
+    let audioChunks =[];
+    const recordBtn = document.getElementById('recordBtn');
+    const statusText = document.getElementById('status');
+    const responseBox = document.getElementById('responseBox');
+
+    // Mike ki permission aur setup
+    async function setupMicrophone() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+            mediaRecorder.ondataavailable = event => {
+                if (event.data.size > 0) audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                audioChunks =[];
+                sendAudioToAPI(audioBlob);
+            };
+        } catch (error) {
+            statusText.innerText = "Error: Microphone permission denied!";
+            statusText.style.color = "red";
+            console.error(error);
+        }
+    }
+
+    // Audio ko Base64 me convert karke API/chat.py ko bhejna
+    async function sendAudioToAPI(audioBlob) {
+        statusText.innerText = "Processing & thinking... 🤔";
+        statusText.style.color = "#ffea00";
+        
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+            // Remove 'data:audio/webm;base64,' prefix
+            const base64Audio = reader.result.split(',')[1]; 
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ audio: base64Audio })
+                });
+
+                const data = await response.json();
+                
+                if (data.reply) {
+                    statusText.innerText = "Done! ✅";
+                    statusText.style.color = "#00e676";
+                    responseBox.innerText = data.reply;
+                    
+                    // AI ka reply bol kar sunana (Audio Dialog Experience)
+                    speakText(data.reply);
+                } else if (data.error) {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                statusText.innerText = "Error occurred! ❌";
+                responseBox.innerText = error.message;
+            }
+        };
+    }
+
+    // Browser ka Text-to-Speech function
+    function speakText(text) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-IN'; // Change to hi-IN for Hindi
+        utterance.rate = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    // Button Events (Start/Stop Recording)
+    recordBtn.addEventListener('mousedown', () => {
+        if (mediaRecorder && mediaRecorder.state === "inactive") {
+            mediaRecorder.start();
+            recordBtn.innerText = "Recording... (Release to Stop)";
+            recordBtn.classList.add("recording");
+            statusText.innerText = "Listening... 🎤";
+        }
+    });
+
+    recordBtn.addEventListener('mouseup', () => {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+            recordBtn.innerText = "Start Recording";
+            recordBtn.classList.remove("recording");
+        }
+    });
+
+    // Mobile touch support
+    recordBtn.addEventListener('touchstart', (e) => { e.preventDefault(); recordBtn.dispatchEvent(new Event('mousedown')); });
+    recordBtn.addEventListener('touchend', (e) => { e.preventDefault(); recordBtn.dispatchEvent(new Event('mouseup')); });
+
+    // Initialize mic on page load
+    setupMicrophone();
+</script>
+
+</body>
+</html>
