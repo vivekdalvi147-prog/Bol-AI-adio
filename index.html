@@ -5,73 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gemini Native Audio Dialog</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #121212;
-            color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .chat-container {
-            width: 90%;
-            max-width: 500px;
-            background: #1e1e1e;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            text-align: center;
-        }
-        #status {
-            margin: 15px 0;
-            font-weight: bold;
-            color: #00e676;
-        }
-        .btn {
-            background-color: #6200ea;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 16px;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: 0.3s;
-            margin: 10px;
-        }
-        .btn:hover { background-color: #7c4dff; }
-        .btn.recording {
-            background-color: #d50000;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        #responseBox {
-            margin-top: 20px;
-            padding: 15px;
-            background: #2c2c2c;
-            border-radius: 10px;
-            min-height: 80px;
-            text-align: left;
-            white-space: pre-wrap;
-        }
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .box { background: #1e1e1e; padding: 30px; border-radius: 20px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.5); width: 90%; max-width: 400px; }
+        .btn { background: #6200ea; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 50px; cursor: pointer; transition: 0.3s; width: 100%; margin-top: 20px; font-weight: bold;}
+        .btn:hover { background: #7c4dff; }
+        .btn.recording { background: #d50000; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100% {transform: scale(1);} }
+        #status { margin-top: 20px; font-size: 16px; color: #00e676; min-height: 24px; font-weight: bold;}
+        
+        /* Audio Animation Visualizer */
+        .visualizer { width: 100%; height: 40px; background: #2c2c2c; margin-top: 20px; border-radius: 10px; display: none; overflow: hidden; position: relative;}
+        .visualizer.active { display: flex; }
+        .wave { width: 100%; height: 100%; background: linear-gradient(90deg, transparent, #00e676, transparent); animation: waveAnim 1.5s linear infinite; }
+        @keyframes waveAnim { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
     </style>
 </head>
 <body>
 
-<div class="chat-container">
-    <h2>🎙️ Voice AI Assistant</h2>
-    <p>Hold the button to speak with AI.</p>
+<div class="box">
+    <h2>🎙️ True Native AI Voice</h2>
+    <p>Hold the button to speak. AI will reply directly in Voice!</p>
     
-    <button id="recordBtn" class="btn">Start Recording</button>
-    <div id="status">Ready</div>
+    <button id="recordBtn" class="btn">Hold to Speak</button>
     
-    <div id="responseBox">AI's reply will appear here...</div>
+    <div class="visualizer" id="visualizer">
+        <div class="wave"></div>
+    </div>
+    
+    <div id="status">Mike Ready 🎤</div>
 </div>
 
 <script>
@@ -79,99 +40,101 @@
     let audioChunks =[];
     const recordBtn = document.getElementById('recordBtn');
     const statusText = document.getElementById('status');
-    const responseBox = document.getElementById('responseBox');
+    const visualizer = document.getElementById('visualizer');
 
-    // Mike ki permission aur setup
-    async function setupMicrophone() {
+    // Microphone Permission and Setup
+    async function initMic() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-
-            mediaRecorder.ondataavailable = event => {
-                if (event.data.size > 0) audioChunks.push(event.data);
-            };
-
+            
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+            
             mediaRecorder.onstop = async () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                 audioChunks =[];
-                sendAudioToAPI(audioBlob);
+                sendAudio(audioBlob);
             };
-        } catch (error) {
-            statusText.innerText = "Error: Microphone permission denied!";
-            statusText.style.color = "red";
-            console.error(error);
+        } catch (err) {
+            statusText.innerText = "Error: Mike Permission Required! ❌";
+            statusText.style.color = "#ff5252";
+            console.error(err);
         }
     }
 
-    // Audio ko Base64 me convert karke API/chat.py ko bhejna
-    async function sendAudioToAPI(audioBlob) {
-        statusText.innerText = "Processing & thinking... 🤔";
+    // Audio server ko bhejna aur Native Voice receive karna
+    async function sendAudio(blob) {
+        statusText.innerText = "Sending to Gemini API... 🚀";
         statusText.style.color = "#ffea00";
-        
+        visualizer.classList.add("active"); // Show animation
+
         const reader = new FileReader();
-        reader.readAsDataURL(audioBlob);
+        reader.readAsDataURL(blob);
         reader.onloadend = async () => {
-            // Remove 'data:audio/webm;base64,' prefix
-            const base64Audio = reader.result.split(',')[1]; 
+            const base64Audio = reader.result.split(',')[1];
 
             try {
-                const response = await fetch('/api/chat', {
+                const res = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ audio: base64Audio })
                 });
 
-                const data = await response.json();
+                const data = await res.json();
                 
-                if (data.reply) {
-                    statusText.innerText = "Done! ✅";
+                if (data.audio) {
+                    statusText.innerText = "AI is Speaking... 🔊";
                     statusText.style.color = "#00e676";
-                    responseBox.innerText = data.reply;
                     
-                    // AI ka reply bol kar sunana (Audio Dialog Experience)
-                    speakText(data.reply);
+                    // Direct Browser me Gemini ki Native Audio play karna
+                    const aiVoiceOut = new Audio("data:audio/wav;base64," + data.audio);
+                    await aiVoiceOut.play();
+                    
+                    // Jab AI bolna khatam kare
+                    aiVoiceOut.onended = () => {
+                        statusText.innerText = "Done! Ready for next. ✅";
+                        visualizer.classList.remove("active");
+                    };
                 } else if (data.error) {
                     throw new Error(data.error);
                 }
-            } catch (error) {
-                statusText.innerText = "Error occurred! ❌";
-                responseBox.innerText = error.message;
+            } catch (err) {
+                statusText.innerText = "API Call Error: " + err.message;
+                statusText.style.color = "#ff5252";
+                visualizer.classList.remove("active");
             }
         };
     }
 
-    // Browser ka Text-to-Speech function
-    function speakText(text) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-IN'; // Change to hi-IN for Hindi
-        utterance.rate = 1.0;
-        window.speechSynthesis.speak(utterance);
-    }
-
-    // Button Events (Start/Stop Recording)
-    recordBtn.addEventListener('mousedown', () => {
+    // Push to Talk Events
+    function startRecord() {
         if (mediaRecorder && mediaRecorder.state === "inactive") {
             mediaRecorder.start();
-            recordBtn.innerText = "Recording... (Release to Stop)";
+            recordBtn.innerText = "Listening... (Release to Stop)";
             recordBtn.classList.add("recording");
-            statusText.innerText = "Listening... 🎤";
+            statusText.innerText = "Recording... 🎤";
+            visualizer.classList.remove("active"); 
         }
-    });
+    }
 
-    recordBtn.addEventListener('mouseup', () => {
+    function stopRecord() {
         if (mediaRecorder && mediaRecorder.state === "recording") {
             mediaRecorder.stop();
-            recordBtn.innerText = "Start Recording";
+            recordBtn.innerText = "Hold to Speak";
             recordBtn.classList.remove("recording");
         }
-    });
+    }
 
-    // Mobile touch support
-    recordBtn.addEventListener('touchstart', (e) => { e.preventDefault(); recordBtn.dispatchEvent(new Event('mousedown')); });
-    recordBtn.addEventListener('touchend', (e) => { e.preventDefault(); recordBtn.dispatchEvent(new Event('mouseup')); });
+    // Desktop Events
+    recordBtn.addEventListener('mousedown', startRecord);
+    recordBtn.addEventListener('mouseup', stopRecord);
+    
+    // Mobile Touch Events
+    recordBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecord(); });
+    recordBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRecord(); });
 
-    // Initialize mic on page load
-    setupMicrophone();
+    // Page start hote hi mic setup karo
+    initMic();
 </script>
 
 </body>
